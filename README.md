@@ -50,7 +50,40 @@ It is also recommended to turn off auto screen lock for your device so that your
 
 ## 🚀 Quick Start
 
-### Method 1: Using uv (Recommended)
+### Method 1: Docker (Recommended for easy setup)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/alexechoi/hinge-automation.git
+cd hinge-automation
+
+# 2. Configure your Gemini API key
+cp docker/env.example .env
+# Edit .env and add your GEMINI_API_KEY
+
+# 3. Connect your Android device via USB with debugging enabled
+
+# 4. Build and run with Docker Compose
+docker-compose up --build
+
+# For testing the setup
+docker-compose run hinge-automation uv run python test_gemini_agent.py
+
+# OR use the convenience script:
+./run-docker.sh test          # Test setup
+./run-docker.sh default 20    # Run with 20 profiles
+./run-docker.sh fast 5        # Fast mode with 5 profiles
+```
+
+**🐳 Docker Benefits:**
+- No Python/dependency installation required
+- Automatic ADB setup and USB device access
+- Isolated environment with all dependencies
+- Easy deployment and scaling
+
+**📖 Full Docker documentation:** See [`docker/README.md`](docker/README.md) for detailed setup, troubleshooting, and configuration options.
+
+### Method 2: Using uv (Local development)
 
 ```bash
 # 1. Clone the repository
@@ -101,13 +134,39 @@ hinge-automation/
 │   │   └── send_button.png        # Send button template
 │   └── images/                    # 📸 Screenshot storage for debugging
 ├── docker/
-│   └── Dockerfile                 # 🐳 Docker container configuration
+│   ├── Dockerfile                 # 🐳 Docker container configuration
+│   ├── README.md                  # 🐳 Docker setup and usage guide
+│   └── env.example                # 🔧 Environment configuration template
+├── docker-compose.yml             # 🐳 Docker Compose configuration with USB/ADB access
+├── run-docker.sh                  # 🚀 Convenience script for Docker operations
 └── README.md                      # 📖 This file
 ```
 
 ## 🎮 Usage & Configuration
 
-### Command Line Options
+### Docker Usage (Recommended)
+
+```bash
+# Basic usage with default settings
+docker-compose up
+
+# Process 20 profiles with verbose logging
+docker-compose run hinge-automation uv run python main_agent.py --profiles 20 --verbose
+
+# Use fast configuration preset  
+docker-compose run hinge-automation uv run python main_agent.py --config fast --profiles 5
+
+# Use conservative configuration for safer automation
+docker-compose run hinge-automation uv run python main_agent.py --config conservative --profiles 3
+
+# Test the setup
+docker-compose run hinge-automation uv run python test_gemini_agent.py
+
+# Interactive debugging
+docker-compose run hinge-automation /bin/bash
+```
+
+### Local Command Line Options
 
 ```bash
 # Basic usage with default settings

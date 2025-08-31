@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  hinge-automation:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: hinge-automation
+    
+    # Environment variables
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PYTHONUNBUFFERED=1
+    
+    # USB device access for ADB
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    
+    # Additional privileges for USB access
+    privileged: true
+    
+    # Network configuration for ADB
+    network_mode: host
+    
+    # Volume mounts
+    volumes:
+      # Mount the app directory for development
+      - ./app:/app
+      # Mount for screenshots and generated files
+      - ./app/images:/app/images
+      # Mount for generated comments persistence
+      - ./app/generated_comments.json:/app/generated_comments.json
+      # Mount for environment file
+      - ./.env:/app/.env:ro
+    
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Command override for different modes
+    # Uncomment one of these or use docker-compose run with custom command
+    
+    # Default automation run
+    command: ["uv", "run", "python", "main_agent.py", "--verbose"]
+    
+    # Alternative commands (comment out the default and uncomment one of these):
+    
+    # Test mode
+    # command: ["uv", "run", "python", "test_gemini_agent.py"]
+    
+    # Interactive shell for debugging
+    # command: ["/bin/bash"]
+    
+    # Custom profile count
+    # command: ["uv", "run", "python", "main_agent.py", "--profiles", "20", "--verbose"]
+    
+    # Fast configuration
+    # command: ["uv", "run", "python", "main_agent.py", "--config", "fast", "--profiles", "5"]
+
+  # Optional: ADB server service (if you want to run ADB server separately)
+  adb-server:
+    image: sorccu/adb:latest
+    container_name: adb-server
+    privileged: true
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+    ports:
+      - "5037:5037"
+    command: adb -a -P 5037 server nodaemon
+    profiles:
+      - adb-only  # Use with: docker-compose --profile adb-only up adb-server
