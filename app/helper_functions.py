@@ -1,7 +1,6 @@
 from ppadb.client import Client as AdbClient
 import time
 import cv2
-import numpy as np
 from dotenv import load_dotenv
 import os
 import glob
@@ -18,7 +17,7 @@ def clear_screenshots_directory():
             # Remove all PNG files in the images directory
             old_screenshots = glob.glob("images/*.png")
             count = len(old_screenshots)
-            
+
             if count > 0:
                 print(f"🗑️  Clearing {count} old screenshots from images directory...")
                 for screenshot in old_screenshots:
@@ -28,7 +27,7 @@ def clear_screenshots_directory():
                 print("📁 Images directory already clean")
         else:
             print("📁 Images directory doesn't exist - will be created when needed")
-            
+
     except Exception as e:
         print(f"⚠️  Warning: Could not clear screenshots directory: {e}")
 
@@ -53,18 +52,18 @@ def capture_screenshot(device, filename):
     Capture screenshot with timestamp to prevent confusion between screenshots
     """
     timestamp = int(time.time() * 1000)  # millisecond timestamp
-    
+
     result = device.screencap()
     # Ensure images directory exists
     os.makedirs("images", exist_ok=True)
-    
+
     # Add timestamp to filename for uniqueness
     timestamped_filename = f"{timestamp}_{filename}.png"
     filepath = f"images/{timestamped_filename}"
-    
+
     with open(filepath, "wb") as fp:
         fp.write(result)
-    
+
     print(f"📸 Screenshot saved: {filepath}")
     return filepath
 
@@ -91,39 +90,39 @@ def tap_with_confidence(device, x, y, confidence=1.0, tap_area_size="medium"):
     else:
         # Standard tap
         device.shell(f"input tap {x} {y}")
-    
+
     print(f"Tapped at ({x}, {y}) with confidence {confidence:.2f}")
 
 
 def dismiss_keyboard(device, width=None, height=None):
     """
     Try multiple methods to dismiss/hide the on-screen keyboard
-    
+
     Returns:
         bool: True if likely successful, False otherwise
     """
     methods_tried = []
-    
+
     try:
         # Method 1: Press Enter (might send message in some apps)
         print("  📥 Trying ENTER key to close keyboard...")
         device.shell("input keyevent KEYCODE_ENTER")
         methods_tried.append("ENTER")
         time.sleep(1)
-        
+
     except Exception as e:
         print(f"  ⚠️  ENTER key failed: {e}")
-    
+
     try:
         # Method 2: Back key to hide keyboard
         print("  ⬅️  Trying BACK key to hide keyboard...")
         device.shell("input keyevent KEYCODE_BACK")
         methods_tried.append("BACK")
         time.sleep(1)
-        
+
     except Exception as e:
         print(f"  ⚠️  BACK key failed: {e}")
-    
+
     try:
         # Method 3: Hide keyboard ADB command
         print("  📱 Trying hide keyboard command...")
@@ -132,10 +131,10 @@ def dismiss_keyboard(device, width=None, height=None):
         device.shell("ime enable com.android.inputmethod.latin/.LatinIME")
         methods_tried.append("IME_TOGGLE")
         time.sleep(1)
-        
+
     except Exception as e:
         print(f"  ⚠️  IME toggle failed: {e}")
-    
+
     try:
         # Method 4: Tap outside keyboard area
         if width and height:
@@ -144,10 +143,10 @@ def dismiss_keyboard(device, width=None, height=None):
             tap(device, int(width * 0.5), int(height * 0.25))
             methods_tried.append("TAP_OUTSIDE")
             time.sleep(1)
-            
+
     except Exception as e:
         print(f"  ⚠️  Tap outside failed: {e}")
-    
+
     print(f"  📝 Keyboard dismissal methods tried: {', '.join(methods_tried)}")
     return len(methods_tried) > 0
 
@@ -162,12 +161,12 @@ def input_text(device, text):
 def input_text_robust(device, text, max_attempts=3):
     """
     Robust text input with multiple methods and verification
-    
+
     Args:
         device: ADB device object
         text: Text to input
         max_attempts: Maximum retry attempts
-    
+
     Returns:
         dict: {
             'success': bool,
@@ -178,69 +177,75 @@ def input_text_robust(device, text, max_attempts=3):
     """
     if not text or not text.strip():
         return {
-            'success': False,
-            'method_used': 'none',
-            'attempts_made': 0,
-            'text_sent': '',
-            'error': 'Empty text provided'
+            "success": False,
+            "method_used": "none",
+            "attempts_made": 0,
+            "text_sent": "",
+            "error": "Empty text provided",
         }
-    
+
     # Clean and prepare text
     original_text = text
     methods = [
-        ('adb_shell_direct', lambda t: device.shell(f'input text "{t}"')),
-        ('adb_shell_escaped', lambda t: device.shell(f"input text '{t}'")),
-        ('keyevent_typing', lambda t: _type_with_keyevents(device, t)),
+        ("adb_shell_direct", lambda t: device.shell(f'input text "{t}"')),
+        ("adb_shell_escaped", lambda t: device.shell(f"input text '{t}'")),
+        ("keyevent_typing", lambda t: _type_with_keyevents(device, t)),
     ]
-    
+
     for attempt in range(max_attempts):
         for method_name, method_func in methods:
             try:
-                print(f"📝 Attempt {attempt + 1}/{max_attempts} - Method: {method_name}")
+                print(
+                    f"📝 Attempt {attempt + 1}/{max_attempts} - Method: {method_name}"
+                )
                 print(f"📝 Text to input: {original_text[:50]}...")
-                
+
                 # Prepare text based on method
-                if method_name == 'adb_shell_direct':
+                if method_name == "adb_shell_direct":
                     # Escape quotes and special characters
-                    prepared_text = original_text.replace('"', '\\"').replace("'", "\\'").replace('`', '\\`')
-                elif method_name == 'adb_shell_escaped':
+                    prepared_text = (
+                        original_text.replace('"', '\\"')
+                        .replace("'", "\\'")
+                        .replace("`", "\\`")
+                    )
+                elif method_name == "adb_shell_escaped":
                     # Use single quotes and escape single quotes
                     prepared_text = original_text.replace("'", "'\"'\"'")
                 else:
                     prepared_text = original_text
-                
+
                 # Execute the method
                 method_func(prepared_text)
                 time.sleep(1.5)  # Give time for text to appear
-                
+
                 print(f"✅ Text input successful with {method_name}")
                 return {
-                    'success': True,
-                    'method_used': method_name,
-                    'attempts_made': attempt + 1,
-                    'text_sent': original_text
+                    "success": True,
+                    "method_used": method_name,
+                    "attempts_made": attempt + 1,
+                    "text_sent": original_text,
                 }
-                
+
             except Exception as e:
                 print(f"❌ Method {method_name} failed: {e}")
                 time.sleep(0.5)
                 continue
-    
+
     # All methods failed
     print(f"❌ All text input methods failed after {max_attempts} attempts")
     return {
-        'success': False,
-        'method_used': 'failed',
-        'attempts_made': max_attempts,
-        'text_sent': original_text,
-        'error': 'All input methods failed'
+        "success": False,
+        "method_used": "failed",
+        "attempts_made": max_attempts,
+        "text_sent": original_text,
+        "error": "All input methods failed",
     }
 
 
 def _type_with_keyevents(device, text):
     """Type text using individual key events (slower but more reliable)"""
     for char in text:
-        if char == ' ':
+        if char == " ":
             device.shell("input keyevent KEYCODE_SPACE")
         elif char.isalpha():
             # Handle letters
@@ -249,20 +254,27 @@ def _type_with_keyevents(device, text):
         elif char.isdigit():
             # Handle numbers
             keycodes = {
-                '0': 'KEYCODE_0', '1': 'KEYCODE_1', '2': 'KEYCODE_2',
-                '3': 'KEYCODE_3', '4': 'KEYCODE_4', '5': 'KEYCODE_5', 
-                '6': 'KEYCODE_6', '7': 'KEYCODE_7', '8': 'KEYCODE_8', '9': 'KEYCODE_9'
+                "0": "KEYCODE_0",
+                "1": "KEYCODE_1",
+                "2": "KEYCODE_2",
+                "3": "KEYCODE_3",
+                "4": "KEYCODE_4",
+                "5": "KEYCODE_5",
+                "6": "KEYCODE_6",
+                "7": "KEYCODE_7",
+                "8": "KEYCODE_8",
+                "9": "KEYCODE_9",
             }
             device.shell(f"input keyevent {keycodes[char]}")
         elif char in ".,!?":
             # Handle basic punctuation
             punctuation_codes = {
-                '.': 'KEYCODE_PERIOD',
-                ',': 'KEYCODE_COMMA', 
-                '!': 'KEYCODE_1',  # Shift + 1
-                '?': 'KEYCODE_SLASH'  # Shift + /
+                ".": "KEYCODE_PERIOD",
+                ",": "KEYCODE_COMMA",
+                "!": "KEYCODE_1",  # Shift + 1
+                "?": "KEYCODE_SLASH",  # Shift + /
             }
-            if char in ['!', '?']:
+            if char in ["!", "?"]:
                 device.shell("input keyevent KEYCODE_SHIFT_LEFT")
             device.shell(f"input keyevent {punctuation_codes[char]}")
         # Skip other special characters
@@ -277,6 +289,7 @@ def generate_comment(profile_text):
     """Legacy function - now uses Gemini via gemini_analyzer"""
     from gemini_analyzer import generate_comment_gemini
     from config import GEMINI_API_KEY
+
     return generate_comment_gemini(profile_text, GEMINI_API_KEY)
 
 
@@ -291,11 +304,11 @@ def get_screen_resolution(device):
 def detect_like_button_cv(screenshot_path):
     """
     Detect like button using OpenCV template matching
-    
+
     Returns:
         dict: {
             'found': bool,
-            'x': int, 
+            'x': int,
             'y': int,
             'confidence': float,
             'width': int,
@@ -307,75 +320,75 @@ def detect_like_button_cv(screenshot_path):
         template_path = "assets/like_button.png"
         if not os.path.exists(template_path):
             print(f"❌ Like button template not found: {template_path}")
-            return {'found': False, 'confidence': 0.0}
-        
+            return {"found": False, "confidence": 0.0}
+
         # Load screenshot and template
         screenshot = cv2.imread(screenshot_path)
         template = cv2.imread(template_path)
-        
+
         if screenshot is None:
             print(f"❌ Could not load screenshot: {screenshot_path}")
-            return {'found': False, 'confidence': 0.0}
-            
+            return {"found": False, "confidence": 0.0}
+
         if template is None:
             print(f"❌ Could not load template: {template_path}")
-            return {'found': False, 'confidence': 0.0}
-        
+            return {"found": False, "confidence": 0.0}
+
         # Get template dimensions
         template_height, template_width = template.shape[:2]
-        
+
         # Convert to grayscale for better matching
         screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-        
+
         # Perform template matching
         result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
-        
+
         # Find the best match
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        
+
         # max_val is the confidence score (0-1)
         confidence = float(max_val)
-        
+
         # Calculate center coordinates
         top_left = max_loc
         center_x = top_left[0] + template_width // 2
         center_y = top_left[1] + template_height // 2
-        
+
         # Consider it found if confidence is above threshold
         confidence_threshold = 0.7
         found = confidence >= confidence_threshold
-        
-        print(f"🎯 CV Like Button Detection:")
+
+        print("🎯 CV Like Button Detection:")
         print(f"   📍 Center: ({center_x}, {center_y})")
         print(f"   📐 Template size: {template_width}x{template_height}")
         print(f"   🎯 Confidence: {confidence:.3f}")
         print(f"   ✅ Found: {found} (threshold: {confidence_threshold})")
-        
+
         return {
-            'found': found,
-            'x': center_x,
-            'y': center_y, 
-            'confidence': confidence,
-            'width': template_width,
-            'height': template_height,
-            'top_left_x': top_left[0],
-            'top_left_y': top_left[1]
+            "found": found,
+            "x": center_x,
+            "y": center_y,
+            "confidence": confidence,
+            "width": template_width,
+            "height": template_height,
+            "top_left_x": top_left[0],
+            "top_left_y": top_left[1],
         }
-        
+
     except Exception as e:
         print(f"❌ CV like button detection failed: {e}")
-        return {'found': False, 'confidence': 0.0}
+        return {"found": False, "confidence": 0.0}
 
 
 def detect_send_button_cv(screenshot_path):
     """
     Detect send button using OpenCV template matching
-    
+
     Returns:
         dict: {
             'found': bool,
-            'x': int, 
+            'x': int,
             'y': int,
             'confidence': float,
             'width': int,
@@ -387,75 +400,77 @@ def detect_send_button_cv(screenshot_path):
         template_path = "assets/send_button.png"
         if not os.path.exists(template_path):
             print(f"❌ Send button template not found: {template_path}")
-            return {'found': False, 'confidence': 0.0}
-        
+            return {"found": False, "confidence": 0.0}
+
         # Load screenshot and template
         screenshot = cv2.imread(screenshot_path)
         template = cv2.imread(template_path)
-        
+
         if screenshot is None:
             print(f"❌ Could not load screenshot: {screenshot_path}")
-            return {'found': False, 'confidence': 0.0}
-            
+            return {"found": False, "confidence": 0.0}
+
         if template is None:
             print(f"❌ Could not load template: {template_path}")
-            return {'found': False, 'confidence': 0.0}
-        
+            return {"found": False, "confidence": 0.0}
+
         # Get template dimensions
         template_height, template_width = template.shape[:2]
-        
+
         # Convert to grayscale for better matching
         screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-        
+
         # Perform template matching
         result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
-        
+
         # Find the best match
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        
+
         # max_val is the confidence score (0-1)
         confidence = float(max_val)
-        
+
         # Calculate center coordinates
         top_left = max_loc
         center_x = top_left[0] + template_width // 2
         center_y = top_left[1] + template_height // 2
-        
+
         # Consider it found if confidence is above threshold
-        confidence_threshold = 0.6  # Lower threshold for send button as it may have different styles
+        confidence_threshold = (
+            0.6  # Lower threshold for send button as it may have different styles
+        )
         found = confidence >= confidence_threshold
-        
-        print(f"🎯 CV Send Button Detection:")
+
+        print("🎯 CV Send Button Detection:")
         print(f"   📍 Center: ({center_x}, {center_y})")
         print(f"   📐 Template size: {template_width}x{template_height}")
         print(f"   🎯 Confidence: {confidence:.3f}")
         print(f"   ✅ Found: {found} (threshold: {confidence_threshold})")
-        
+
         return {
-            'found': found,
-            'x': center_x,
-            'y': center_y, 
-            'confidence': confidence,
-            'width': template_width,
-            'height': template_height,
-            'top_left_x': top_left[0],
-            'top_left_y': top_left[1]
+            "found": found,
+            "x": center_x,
+            "y": center_y,
+            "confidence": confidence,
+            "width": template_width,
+            "height": template_height,
+            "top_left_x": top_left[0],
+            "top_left_y": top_left[1],
         }
-        
+
     except Exception as e:
         print(f"❌ CV send button detection failed: {e}")
-        return {'found': False, 'confidence': 0.0}
+        return {"found": False, "confidence": 0.0}
 
 
 def detect_comment_field_cv(screenshot_path):
     """
     Detect comment field using OpenCV template matching
-    
+
     Returns:
         dict: {
             'found': bool,
-            'x': int, 
+            'x': int,
             'y': int,
             'confidence': float,
             'width': int,
@@ -467,65 +482,65 @@ def detect_comment_field_cv(screenshot_path):
         template_path = "assets/comment_field.png"
         if not os.path.exists(template_path):
             print(f"❌ Comment field template not found: {template_path}")
-            return {'found': False, 'confidence': 0.0}
-        
+            return {"found": False, "confidence": 0.0}
+
         # Load screenshot and template
         screenshot = cv2.imread(screenshot_path)
         template = cv2.imread(template_path)
-        
+
         if screenshot is None:
             print(f"❌ Could not load screenshot: {screenshot_path}")
-            return {'found': False, 'confidence': 0.0}
-            
+            return {"found": False, "confidence": 0.0}
+
         if template is None:
             print(f"❌ Could not load template: {template_path}")
-            return {'found': False, 'confidence': 0.0}
-        
+            return {"found": False, "confidence": 0.0}
+
         # Get template dimensions
         template_height, template_width = template.shape[:2]
-        
+
         # Convert to grayscale for better matching
         screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-        
+
         # Perform template matching
         result = cv2.matchTemplate(screenshot_gray, template_gray, cv2.TM_CCOEFF_NORMED)
-        
+
         # Find the best match
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        
+
         # max_val is the confidence score (0-1)
         confidence = float(max_val)
-        
+
         # Calculate center coordinates
         top_left = max_loc
         center_x = top_left[0] + template_width // 2
         center_y = top_left[1] + template_height // 2
-        
+
         # Consider it found if confidence is above threshold
         confidence_threshold = 0.6  # Lower threshold for comment field as text may vary
         found = confidence >= confidence_threshold
-        
-        print(f"🎯 CV Comment Field Detection:")
+
+        print("🎯 CV Comment Field Detection:")
         print(f"   📍 Center: ({center_x}, {center_y})")
         print(f"   📐 Template size: {template_width}x{template_height}")
         print(f"   🎯 Confidence: {confidence:.3f}")
         print(f"   ✅ Found: {found} (threshold: {confidence_threshold})")
-        
+
         return {
-            'found': found,
-            'x': center_x,
-            'y': center_y, 
-            'confidence': confidence,
-            'width': template_width,
-            'height': template_height,
-            'top_left_x': top_left[0],
-            'top_left_y': top_left[1]
+            "found": found,
+            "x": center_x,
+            "y": center_y,
+            "confidence": confidence,
+            "width": template_width,
+            "height": template_height,
+            "top_left_x": top_left[0],
+            "top_left_y": top_left[1],
         }
-        
+
     except Exception as e:
         print(f"❌ CV comment field detection failed: {e}")
-        return {'found': False, 'confidence': 0.0}
+        return {"found": False, "confidence": 0.0}
 
 
 def open_hinge(device):
@@ -540,26 +555,26 @@ def reset_hinge_app(device):
     This refreshes the app state and can help when the agent gets stuck.
     """
     package_name = "co.match.android.matchhinge"
-    
+
     print("🔄 Resetting Hinge app...")
-    
+
     # Step 1: Force stop the app
     print("🛑 Force stopping Hinge app...")
     device.shell(f"am force-stop {package_name}")
     time.sleep(2)
-    
+
     # Step 2: Kill app from background processes
     print("💀 Killing background processes...")
     device.shell(f"am kill {package_name}")
     time.sleep(1)
-    
+
     # Step 3: Go back to home screen
     device.shell("input keyevent KEYCODE_HOME")
     time.sleep(2)
-    
+
     # Step 4: Reopen the app
     print("🚀 Reopening Hinge app...")
     device.shell(f"am start -n {package_name}")
     time.sleep(2)
-    
+
     print("✅ Hinge app reset completed")

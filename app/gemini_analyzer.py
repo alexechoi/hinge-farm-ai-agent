@@ -9,34 +9,34 @@ import json
 def extract_text_from_image_gemini(image_path: str, gemini_api_key: str = None) -> str:
     """
     Uses Google's Gemini API to extract and analyze text from dating profile images.
-    
+
     Args:
         image_path: Path to the screenshot image
         gemini_api_key: Google GenAI API key (optional, will use env var if not provided)
-    
+
     Returns:
         Extracted text from the image
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     if not gemini_api_key:
         raise ValueError("GEMINI_API_KEY environment variable not set")
-    
+
     try:
         # Initialize the client
         client = genai.Client(api_key=gemini_api_key)
-        
+
         # Load and prepare the image
-        with open(image_path, 'rb') as f:
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
-        
+
         # Create the image part
         image_part = types.Part.from_bytes(
             data=image_bytes,
-            mime_type='image/png'  # Assuming screenshots are PNG
+            mime_type="image/png",  # Assuming screenshots are PNG
         )
-        
+
         # Prompt specifically for dating profile text extraction
         prompt = """
         Extract all visible text from this dating profile screenshot. 
@@ -49,41 +49,39 @@ def extract_text_from_image_gemini(image_path: str, gemini_api_key: str = None) 
         
         Return only the extracted text content, formatted cleanly without any analysis or commentary.
         """
-        
+
         # Generate content
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, image_part]
+            model="gemini-2.5-flash", contents=[prompt, image_part]
         )
-        
+
         return response.text.strip() if response.text else ""
-        
+
     except Exception as e:
         print(f"Error extracting text with Gemini API: {e}")
         return ""
 
 
-
 def generate_comment_gemini(profile_text: str, gemini_api_key: str = None) -> str:
     """
     Generate a flirty, witty dating app comment focused on getting a date.
-    
+
     Args:
         profile_text: The extracted text from the dating profile
         gemini_api_key: Google GenAI API key (optional, will use env var if not provided)
-    
+
     Returns:
         Generated comment string
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     if not gemini_api_key:
         raise ValueError("GEMINI_API_KEY environment variable not set")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
+
         prompt = f"""
         Based on this dating profile, generate a FLIRTY, WITTY comment that's designed to get a date.
 
@@ -117,23 +115,22 @@ def generate_comment_gemini(profile_text: str, gemini_api_key: str = None) -> st
 
         Generate ONE flirty, witty comment that will get them excited to meet up:
         """
-        
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt]
+            model="gemini-2.5-flash", contents=[prompt]
         )
-        
+
         comment = response.text.strip() if response.text else ""
-        
+
         # Clean up the comment (remove quotes if present)
-        comment = comment.strip('"\'')
-        
+        comment = comment.strip("\"'")
+
         # Fallback if generation fails or is too generic
         if not comment or len(comment) < 10 or "hey" in comment.lower()[:10]:
             return _generate_fallback_flirty_comment(profile_text)
-        
+
         return comment
-        
+
     except Exception as e:
         print(f"Error generating comment with Gemini API: {e}")
         return _generate_fallback_flirty_comment(profile_text)
@@ -144,25 +141,35 @@ def _generate_fallback_flirty_comment(profile_text: str) -> str:
     Generate fallback flirty comments when main generation fails
     """
     import random
-    
+
     # Try to match fallback to profile content
     profile_lower = profile_text.lower()
-    
-    if any(word in profile_lower for word in ['coffee', 'caffeine', 'espresso', 'latte']):
+
+    if any(
+        word in profile_lower for word in ["coffee", "caffeine", "espresso", "latte"]
+    ):
         return "I have a theory that our first coffee date is going to turn into an all-day adventure"
-    
-    if any(word in profile_lower for word in ['travel', 'adventure', 'explore', 'wanderlust']):
+
+    if any(
+        word in profile_lower
+        for word in ["travel", "adventure", "explore", "wanderlust"]
+    ):
         return "Your wanderlust is showing - want to explore the city together?"
-    
-    if any(word in profile_lower for word in ['food', 'foodie', 'cooking', 'restaurant', 'pizza']):
+
+    if any(
+        word in profile_lower
+        for word in ["food", "foodie", "cooking", "restaurant", "pizza"]
+    ):
         return "I'm getting serious 'let's debate the best restaurants over dinner' energy from you"
-    
-    if any(word in profile_lower for word in ['music', 'concert', 'festival', 'band']):
+
+    if any(word in profile_lower for word in ["music", "concert", "festival", "band"]):
         return "Plot twist: what if our music taste is as compatible as I think? Testing required"
-    
-    if any(word in profile_lower for word in ['workout', 'gym', 'fitness', 'yoga', 'hike']):
+
+    if any(
+        word in profile_lower for word in ["workout", "gym", "fitness", "yoga", "hike"]
+    ):
         return "Challenge accepted - but first, let's grab drinks and see if you're as competitive as me"
-    
+
     # Generic flirty fallbacks
     flirty_fallbacks = [
         "I'm getting major 'let's grab drinks and see if you're as interesting in person' vibes",
@@ -176,38 +183,40 @@ def _generate_fallback_flirty_comment(profile_text: str) -> str:
         "Your profile is giving me 'let's skip to the fun part' energy - drinks this week?",
         "I'm convinced we're going to have one of those conversations that goes until 3am",
         "Something tells me you'd be dangerous to take on a date - I'm intrigued",
-        "Your vibe is immaculate - when can we test the in-person chemistry?"
+        "Your vibe is immaculate - when can we test the in-person chemistry?",
     ]
-    
+
     return random.choice(flirty_fallbacks)
 
 
-def generate_contextual_date_comment(profile_analysis: dict, profile_text: str, gemini_api_key: str = None) -> str:
+def generate_contextual_date_comment(
+    profile_analysis: dict, profile_text: str, gemini_api_key: str = None
+) -> str:
     """
     Generate highly contextual, flirty comments based on detailed profile analysis
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
-        interests = profile_analysis.get('interests', [])
-        personality_traits = profile_analysis.get('personality_traits', [])
-        profession = profile_analysis.get('profession', '')
-        location = profile_analysis.get('location', '')
-        
+
+        interests = profile_analysis.get("interests", [])
+        personality_traits = profile_analysis.get("personality_traits", [])
+        profession = profile_analysis.get("profession", "")
+        location = profile_analysis.get("location", "")
+
         context_info = f"""
         PROFILE ANALYSIS:
-        - Interests: {', '.join(interests[:5])}
-        - Personality: {', '.join(personality_traits[:3])}
+        - Interests: {", ".join(interests[:5])}
+        - Personality: {", ".join(personality_traits[:3])}
         - Profession: {profession}
         - Location: {location}
         
         FULL PROFILE TEXT:
         {profile_text[:500]}...
         """
-        
+
         prompt = f"""
         Create an IRRESISTIBLE, flirty comment that will make them want to meet up ASAP.
         
@@ -231,50 +240,44 @@ def generate_contextual_date_comment(profile_analysis: dict, profile_text: str, 
         
         Generate ONE comment that's impossible to ignore:
         """
-        
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt]
+            model="gemini-2.5-flash", contents=[prompt]
         )
-        
-        comment = response.text.strip().strip('"\'') if response.text else ""
-        
+
+        comment = response.text.strip().strip("\"'") if response.text else ""
+
         if not comment or len(comment) < 15:
             return generate_comment_gemini(profile_text, gemini_api_key)
-        
+
         return comment
-        
+
     except Exception as e:
         print(f"Error generating contextual comment: {e}")
         return generate_comment_gemini(profile_text, gemini_api_key)
 
 
-
-
 def analyze_dating_ui_with_gemini(image_path: str, gemini_api_key: str = None) -> dict:
     """
     Use Gemini to analyze the dating app UI and determine what actions are available.
-    
+
     Returns:
         Dictionary with UI analysis including like button location, profile content, etc.
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     if not gemini_api_key:
         raise ValueError("GEMINI_API_KEY environment variable not set")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
-        with open(image_path, 'rb') as f:
+
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
-        
-        image_part = types.Part.from_bytes(
-            data=image_bytes,
-            mime_type='image/png'
-        )
-        
+
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/png")
+
         prompt = """
         Analyze this dating app screenshot and provide a comprehensive UI analysis in JSON format:
         
@@ -301,55 +304,50 @@ def analyze_dating_ui_with_gemini(image_path: str, gemini_api_key: str = None) -
         
         Be honest in your assessment.
         """
-        
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-        
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, image_part],
-            config=config
+            model="gemini-2.5-flash", contents=[prompt, image_part], config=config
         )
-        
+
         return json.loads(response.text) if response.text else {}
-        
+
     except Exception as e:
         print(f"Error analyzing UI with Gemini API: {e}")
         return {
             "has_like_button": False,
             "should_like": False,
             "reason": "Analysis failed",
-            "profile_quality_score": 5
+            "profile_quality_score": 5,
         }
 
 
-def find_ui_elements_with_gemini(image_path: str, element_type: str = "like_button", gemini_api_key: str = None) -> dict:
+def find_ui_elements_with_gemini(
+    image_path: str, element_type: str = "like_button", gemini_api_key: str = None
+) -> dict:
     """
     Use Gemini to find UI elements and their approximate locations.
-    
+
     Args:
         image_path: Path to screenshot
         element_type: Type of element to find ("like_button", "dislike_button", etc.)
         gemini_api_key: API key
-    
+
     Returns:
         Dictionary with element location info
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
-        with open(image_path, 'rb') as f:
+
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
-        
-        image_part = types.Part.from_bytes(
-            data=image_bytes,
-            mime_type='image/png'
-        )
-        
+
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/png")
+
         prompt = f"""
         Analyze this dating app screenshot and find the {element_type}.
         
@@ -372,19 +370,15 @@ def find_ui_elements_with_gemini(image_path: str, element_type: str = "like_butt
         Be very precise with coordinates..
         Express coordinates as percentages where 0.0 = left/top edge, 1.0 = right/bottom edge.
         """
-        
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-        
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, image_part],
-            config=config
+            model="gemini-2.5-flash", contents=[prompt, image_part], config=config
         )
-        
+
         return json.loads(response.text) if response.text else {"element_found": False}
-        
+
     except Exception as e:
         print(f"Error finding UI elements with Gemini: {e}")
         return {"element_found": False}
@@ -393,24 +387,21 @@ def find_ui_elements_with_gemini(image_path: str, element_type: str = "like_butt
 def analyze_profile_scroll_content(image_path: str, gemini_api_key: str = None) -> dict:
     """
     Analyze if there's more content to scroll through on a profile.
-    
+
     Returns:
         Dictionary with scroll analysis
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
-        with open(image_path, 'rb') as f:
+
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
-        
-        image_part = types.Part.from_bytes(
-            data=image_bytes,
-            mime_type='image/png'
-        )
-        
+
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/png")
+
         prompt = """
         Analyze this dating profile screenshot to determine scrolling needs:
         
@@ -440,42 +431,39 @@ def analyze_profile_scroll_content(image_path: str, gemini_api_key: str = None) 
         
         The scroll area should be in the center of the profile content, avoiding buttons at bottom.
         """
-        
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-        
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, image_part],
-            config=config
+            model="gemini-2.5-flash", contents=[prompt, image_part], config=config
         )
-        
-        return json.loads(response.text) if response.text else {"has_more_content": False}
-        
+
+        return (
+            json.loads(response.text) if response.text else {"has_more_content": False}
+        )
+
     except Exception as e:
         print(f"Error analyzing scroll content: {e}")
         return {"has_more_content": False}
 
 
-def get_profile_navigation_strategy(image_path: str, gemini_api_key: str = None) -> dict:
+def get_profile_navigation_strategy(
+    image_path: str, gemini_api_key: str = None
+) -> dict:
     """
     Determine the best navigation strategy to avoid getting stuck.
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
-        with open(image_path, 'rb') as f:
+
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
-        
-        image_part = types.Part.from_bytes(
-            data=image_bytes,
-            mime_type='image/png'
-        )
-        
+
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/png")
+
         prompt = """
         Analyze this dating app screen to determine navigation strategy:
         
@@ -499,19 +487,19 @@ def get_profile_navigation_strategy(image_path: str, gemini_api_key: str = None)
         
         For getting unstuck, recommend larger swipe distances and different directions.
         """
-        
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-        
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, image_part],
-            config=config
+            model="gemini-2.5-flash", contents=[prompt, image_part], config=config
         )
-        
-        return json.loads(response.text) if response.text else {"navigation_action": "swipe_left"}
-        
+
+        return (
+            json.loads(response.text)
+            if response.text
+            else {"navigation_action": "swipe_left"}
+        )
+
     except Exception as e:
         print(f"Error getting navigation strategy: {e}")
         return {"navigation_action": "swipe_left", "reason": "fallback"}
@@ -523,18 +511,15 @@ def detect_comment_ui_elements(image_path: str, gemini_api_key: str = None) -> d
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
-        with open(image_path, 'rb') as f:
+
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
-        
-        image_part = types.Part.from_bytes(
-            data=image_bytes,
-            mime_type='image/png'
-        )
-        
+
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/png")
+
         prompt = """
         Analyze this dating app comment interface screenshot and find UI elements:
         
@@ -562,50 +547,45 @@ def detect_comment_ui_elements(image_path: str, gemini_api_key: str = None) -> d
         Focus on elements in the bottom half of the screen.
         Express coordinates as percentages (0.0 = left/top, 1.0 = right/bottom).
         """
-        
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-        
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, image_part],
-            config=config
+            model="gemini-2.5-flash", contents=[prompt, image_part], config=config
         )
-        
+
         return json.loads(response.text) if response.text else {}
-        
+
     except Exception as e:
         print(f"Error detecting comment UI elements: {e}")
         return {"comment_field_found": False, "send_button_found": False}
 
 
-def verify_action_success(image_path: str, action_type: str, gemini_api_key: str = None) -> dict:
+def verify_action_success(
+    image_path: str, action_type: str, gemini_api_key: str = None
+) -> dict:
     """
     Verify if a specific action (like, comment, etc.) was successful.
-    
+
     Args:
         image_path: Path to screenshot after action
         action_type: "like_tap", "comment_sent", "profile_change"
         gemini_api_key: API key
-    
+
     Returns:
         Dictionary with verification results
     """
     if not gemini_api_key:
         gemini_api_key = os.getenv("GEMINI_API_KEY")
-    
+
     try:
         client = genai.Client(api_key=gemini_api_key)
-        
-        with open(image_path, 'rb') as f:
+
+        with open(image_path, "rb") as f:
             image_bytes = f.read()
-        
-        image_part = types.Part.from_bytes(
-            data=image_bytes,
-            mime_type='image/png'
-        )
-        
+
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/png")
+
         if action_type == "like_tap":
             prompt = """
             Analyze this dating app screenshot to verify if a LIKE action was successful:
@@ -630,7 +610,7 @@ def verify_action_success(image_path: str, action_type: str, gemini_api_key: str
             - Error message
             - Interface unchanged
             """
-            
+
         elif action_type == "comment_sent":
             prompt = """
             Analyze this screenshot to verify if a COMMENT was successfully sent:
@@ -656,7 +636,7 @@ def verify_action_success(image_path: str, action_type: str, gemini_api_key: str
             - Error message
             - Send button still visible and active
             """
-            
+
         elif action_type == "profile_change":
             prompt = """
             Analyze this screenshot to verify if we successfully moved to a NEW profile:
@@ -682,7 +662,7 @@ def verify_action_success(image_path: str, action_type: str, gemini_api_key: str
             - Same name/age
             - No visual changes
             """
-        
+
         else:
             # Generic verification
             prompt = f"""
@@ -695,26 +675,22 @@ def verify_action_success(image_path: str, action_type: str, gemini_api_key: str
                 "description": "general analysis of interface state"
             }}
             """
-        
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-        
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, image_part],
-            config=config
+            model="gemini-2.5-flash", contents=[prompt, image_part], config=config
         )
-        
+
         result = json.loads(response.text) if response.text else {}
-        result['verification_type'] = action_type
+        result["verification_type"] = action_type
         return result
-        
+
     except Exception as e:
         print(f"Error verifying action {action_type}: {e}")
         return {
             "verification_type": action_type,
             "action_successful": False,
             "confidence": 0.0,
-            "description": f"Verification failed: {e}"
+            "description": f"Verification failed: {e}",
         }
