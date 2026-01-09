@@ -1,11 +1,19 @@
 from ppadb.client import Client as AdbClient
 import time
 import cv2
+import random
 from dotenv import load_dotenv
 import os
 import glob
 
 load_dotenv()
+
+
+def random_delay(min_sec=0.5, max_sec=2.0):
+    """Add a random delay to appear more human-like"""
+    delay = random.uniform(min_sec, max_sec)
+    time.sleep(delay)
+    return delay
 
 
 def clear_screenshots_directory():
@@ -69,8 +77,11 @@ def capture_screenshot(device, filename):
 
 
 def tap(device, x, y):
-    """Basic tap function"""
-    device.shell(f"input tap {x} {y}")
+    """Basic tap function with slight position randomization"""
+    # Add slight random offset (±5 pixels) to appear more human
+    x_offset = random.randint(-5, 5)
+    y_offset = random.randint(-5, 5)
+    device.shell(f"input tap {x + x_offset} {y + y_offset}")
 
 
 def tap_with_confidence(device, x, y, confidence=1.0, tap_area_size="medium"):
@@ -282,6 +293,14 @@ def _type_with_keyevents(device, text):
 
 
 def swipe(device, x1, y1, x2, y2, duration=500):
+    """Swipe with randomized parameters to appear more human"""
+    # Add slight random offset to start/end positions (±10 pixels)
+    x1 += random.randint(-10, 10)
+    y1 += random.randint(-10, 10)
+    x2 += random.randint(-10, 10)
+    y2 += random.randint(-10, 10)
+    # Vary duration by ±20%
+    duration = int(duration * random.uniform(0.8, 1.2))
     device.shell(f"input swipe {x1} {y1} {x2} {y2} {duration}")
 
 
