@@ -6,3 +6,4 @@ app/generated_comments.json
 *__pycache__
 *.venv
 *.DS_Store
+app/images/*
