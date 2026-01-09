@@ -29,6 +29,7 @@ from helper_functions import (
     detect_send_button_cv,
     detect_comment_field_cv,
     input_text_robust,
+    random_delay,
 )
 from gemini_analyzer import (
     extract_text_from_image_gemini,
@@ -250,7 +251,7 @@ class LangGraphHingeAgent:
 
         width, height = get_screen_resolution(device)
         open_hinge(device)
-        time.sleep(5)
+        random_delay(4, 7)  # Variable startup delay
 
         # Update template weights
         success_rates = calculate_template_success_rates()
@@ -486,7 +487,7 @@ class LangGraphHingeAgent:
                 scroll_y_end,
                 duration=600,
             )
-            time.sleep(2)  # Allow content to load
+            random_delay(1.5, 3.5)  # Variable delay after scroll
 
             # Capture screenshot after scroll
             scroll_screenshot = capture_screenshot(
@@ -836,7 +837,7 @@ class LangGraphHingeAgent:
 
         # Execute the like tap
         tap_with_confidence(state["device"], like_x, like_y, confidence)
-        time.sleep(3)
+        random_delay(2, 4)  # Variable delay after like
 
         # Check if comment interface appeared
         immediate_screenshot = capture_screenshot(
@@ -1158,7 +1159,7 @@ class LangGraphHingeAgent:
             # Step 5: Tap the send button
             print("📤 Step 5: Tapping send button...")
             tap_with_confidence(state["device"], send_x, send_y, confidence)
-            time.sleep(3)
+            random_delay(2, 4)  # Variable delay after send
 
             # Verify comment was sent by checking if we moved to new profile or interface closed
             verification_screenshot = capture_screenshot(
@@ -1285,7 +1286,7 @@ class LangGraphHingeAgent:
 
             # Execute the like tap
             tap_with_confidence(state["device"], like_x, like_y, confidence)
-            time.sleep(3)
+            random_delay(2, 4)  # Variable delay after like
 
             # Verify like was successful by checking for profile change
             verification_screenshot = capture_screenshot(
@@ -1368,7 +1369,7 @@ class LangGraphHingeAgent:
         y_dislike = int(state["height"] * self.config.dislike_button_coords[1])
 
         tap(state["device"], x_dislike, y_dislike)
-        time.sleep(3)
+        random_delay(2, 4)  # Variable delay after dislike
 
         # Verify dislike using profile change detection
         verification_screenshot = capture_screenshot(
@@ -1425,7 +1426,7 @@ class LangGraphHingeAgent:
         y2_swipe = int(y1_swipe * 0.75)
 
         swipe(state["device"], x1_swipe, y1_swipe, x2_swipe, y2_swipe)
-        time.sleep(3)
+        random_delay(2, 4)  # Variable delay after navigation
 
         # Verify navigation
         nav_screenshot = capture_screenshot(state["device"], "navigation_verification")
